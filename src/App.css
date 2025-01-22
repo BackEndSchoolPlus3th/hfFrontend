@@ -1,27 +1,9 @@
 #root {
-  max-width: 680px;
+  max-width: 1280px;
   margin: 0 auto;
   padding: 2rem;
   text-align: center;
 }
-
-
-.commonLayoutContainer {
-  width: 100%;
-  min-width: 650px;
-  max-width: var(--max-width);
-  margin: 0 auto;
-  display: flex;
-  flex-direction: column;
-  min-height: 100%;
-  padding-top: var(--layout-padding-top);
-  padding-bottom: 0;
-  padding-bottom: calc(env(safe-area-inset-bottom) + 0px);
-  padding-bottom: calc(constant(safe-area-inset-bottom) + 0px);
-  background-color: var(--layout-bg-color);
-}
-
-
 
 .logo {
   height: 6em;
@@ -57,49 +39,4 @@
 
 .read-the-docs {
   color: #888;
-}
-
-
-/* Footer설정 */
-.footer {
-  width: 100%;
-  background-color: #f8f8f8;
-  padding: 20px 0;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-}
-
-._gnb__menu_1h8bp_13 {
-  max-width: 1200px;
-  width: 100%;
-}
-
-._gnb__menu_1h8bp_13 ul {
-  list-style-type: none;
-  padding: 0;
-  margin: 0;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-}
-
-._gnb__menu_1h8bp_13 li {
-  margin: 0 15px;
-}
-
-._gnb__menu_1h8bp_13 a {
-  text-decoration: none;
-  color: #333;
-  font-size: 14px;
-}
-
-._gnb__menu_1h8bp_13 a:hover {
-  color: #ff6700; /* 원하는 hover 색상 */
-}
-
-
- /* 슬라이드 마우스 포인터 손 모양으로 설정 */
-.slider {
-  cursor: pointer;
 }
