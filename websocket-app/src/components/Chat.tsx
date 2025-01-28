@@ -3,9 +3,10 @@ import { Client } from '@stomp/stompjs';
 import axios from 'axios';
 
 interface ChatMessage {
+    messageId?: number;
     nickname?: string;
     chatMessageContent: string;
-    messageTimestamp: string;  // 추가
+    messageTimestamp: string;
 }
 
 interface PageInfo {
@@ -36,7 +37,6 @@ const Chat: React.FC<{ chatRoomId: number; memberId: number }> = ({ chatRoomId, 
         }
     };
 
-    // 이전 메시지 조회
     const fetchPreviousMessages = async (page: number) => {
         try {
             const response = await axios.get<ChatResponse>(
@@ -45,10 +45,16 @@ const Chat: React.FC<{ chatRoomId: number; memberId: number }> = ({ chatRoomId, 
 
             if (page === 0) {
                 setMessages(response.data.content);
-                scrollToBottom(); // 초기 로드시에만 스크롤
+                // 첫 로드시 가장 최신 메시지의 읽음 상태 업데이트
+                if (response.data.content.length > 0) {
+                    const latestMessage = response.data.content[0]; // 가장 최신 메시지
+                    if (latestMessage.messageId) {  // id 필드 추가 필요
+                        updateMessageReadStatus(latestMessage.messageId);
+                    }
+                }
+                setTimeout(() => scrollToBottom(), 100);
             } else {
                 setMessages(prev => [...prev, ...response.data.content]);
-                // 이전 메시지 로드시에는 스크롤 하지 않음
             }
 
             setHasMore(page < response.data.page.totalPages - 1);
@@ -61,6 +67,23 @@ const Chat: React.FC<{ chatRoomId: number; memberId: number }> = ({ chatRoomId, 
         const nextPage = currentPage + 1;
         setCurrentPage(nextPage);
         fetchPreviousMessages(nextPage);
+    };
+
+    // 메시지 읽음 상태 업데이트 함수
+    const updateMessageReadStatus = async (latestMessageId: number) => {
+        try {
+            const messageReadStatus = {
+                memberId: memberId,
+                messageId: latestMessageId
+            };
+
+            await axios.put(
+                `http://localhost:8090/api/v1/chatRooms/${chatRoomId}/messages/readStatus`,
+                messageReadStatus
+            );
+        } catch (error) {
+            console.error('메시지 읽음 상태 업데이트 실패:', error);
+        }
     };
 
     useEffect(() => {
@@ -80,12 +103,13 @@ const Chat: React.FC<{ chatRoomId: number; memberId: number }> = ({ chatRoomId, 
                         const chatMessage: ChatMessage = {
                             nickname: receivedMessage.nickname,
                             chatMessageContent: receivedMessage.chatMessageContent,
-                            messageTimestamp: receivedMessage.createDate // createDate를 messageTimestamp로 매핑
+                            messageTimestamp: receivedMessage.createDate
                         };
                         setMessages(prev => [chatMessage, ...prev]);
-                        // 새 메시지 수신시에만 스크롤
-                        if (receivedMessage.memberId === memberId) {
-                            scrollToBottom();
+                        
+                        // 새 메시지가 도착하면 읽음 상태 업데이트
+                        if (receivedMessage.id) {
+                            updateMessageReadStatus(receivedMessage.id);
                         }
                     }
                 });
@@ -123,14 +147,12 @@ const Chat: React.FC<{ chatRoomId: number; memberId: number }> = ({ chatRoomId, 
             );
 
             setMessageInput('');
-            // 메시지 전송 후 스크롤
             scrollToBottom();
         } catch (error) {
             console.error('메시지 전송 실패:', error);
         }
     };
 
-    // 시간 포맷팅 함수
     const formatMessageTime = (timestamp: string) => {
         const date = new Date(timestamp);
         if (isNaN(date.getTime())) {
@@ -156,7 +178,8 @@ const Chat: React.FC<{ chatRoomId: number; memberId: number }> = ({ chatRoomId, 
                     height: "400px",
                     overflowY: "auto",
                     display: "flex",
-                    flexDirection: "column"
+                    flexDirection: "column",
+                    padding: "20px"
                 }}
             >
                 {hasMore && (
@@ -171,22 +194,60 @@ const Chat: React.FC<{ chatRoomId: number; memberId: number }> = ({ chatRoomId, 
                         이전 메시지 더보기
                     </button>
                 )}
-                <div style={{ flexGrow: 1 }}> {/* 여백을 위한 공간 */}
+                <div style={{ flexGrow: 1 }}>
                     {messages.slice().reverse().map((msg, index) => (
                         <div key={index} className="message" style={{
                             display: 'flex',
-                            gap: '8px',
-                            margin: '5px 0'
+                            flexDirection: 'column',
+                            margin: '10px 0'
                         }}>
-                            <span>{msg.nickname} : {msg.chatMessageContent || "내용 없음"}</span>
-                            <span style={{ color: '#888', fontSize: '0.9em' }}>
-                                {formatMessageTime(msg.messageTimestamp)}
-                            </span>
+                            <div style={{
+                                display: 'flex',
+                                gap: '8px',
+                                alignItems: 'flex-end',
+                                marginBottom: '4px'
+                            }}>
+                                <span style={{ 
+                                    color: '#666',
+                                    fontSize: '0.9em',
+                                    fontWeight: 500
+                                }}>
+                                    {msg.nickname}
+                                </span>
+                            </div>
+                            <div style={{
+                                display: 'flex',
+                                gap: '8px',
+                                alignItems: 'flex-end'
+                            }}>
+                                <div style={{
+                                    background: '#f0f2f5',
+                                    padding: '8px 12px',
+                                    borderRadius: '12px 12px 12px 0',
+                                    maxWidth: '70%',
+                                    wordBreak: 'break-word',
+                                    boxShadow: '0 1px 2px rgba(0, 0, 0, 0.1)'
+                                }}>
+                                    {msg.chatMessageContent || "내용 없음"}
+                                </div>
+                                <span style={{ 
+                                    color: '#888', 
+                                    fontSize: '0.8em',
+                                    marginBottom: '4px'
+                                }}>
+                                    {formatMessageTime(msg.messageTimestamp)}
+                                </span>
+                            </div>
                         </div>
                     ))}
                 </div>
             </div>
-            <div className="message-input">
+            <div className="message-input" style={{
+                display: 'flex',
+                gap: '8px',
+                padding: '10px',
+                borderTop: '1px solid #ddd'
+            }}>
                 <input
                     type="text"
                     value={messageInput}
@@ -194,8 +255,26 @@ const Chat: React.FC<{ chatRoomId: number; memberId: number }> = ({ chatRoomId, 
                     onKeyPress={(e) => e.key === 'Enter' && sendMessage()}
                     placeholder="메시지를 입력하세요..."
                     maxLength={250}
+                    style={{
+                        flex: 1,
+                        padding: '8px',
+                        borderRadius: '4px',
+                        border: '1px solid #ddd'
+                    }}
                 />
-                <button onClick={sendMessage}>전송</button>
+                <button 
+                    onClick={sendMessage}
+                    style={{
+                        padding: '8px 16px',
+                        backgroundColor: '#007bff',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: '4px',
+                        cursor: 'pointer'
+                    }}
+                >
+                    전송
+                </button>
             </div>
         </div>
     );
